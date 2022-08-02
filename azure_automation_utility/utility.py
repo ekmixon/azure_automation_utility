@@ -20,7 +20,7 @@ def get_automation_runas_credential():
 
     # Authenticate with service principal certificate
     resource = "https://management.core.windows.net/"
-    authority_url = ("https://login.microsoftonline.com/" + tenant_id)
+    authority_url = f"https://login.microsoftonline.com/{tenant_id}"
     context = adal.AuthenticationContext(authority_url)
     return azure_active_directory.AdalAuthentication(
         lambda: context.acquire_token_with_client_certificate(
@@ -50,7 +50,7 @@ def get_automation_runas_token():
 
     # Authenticate with service principal certificate
     resource = "https://management.core.windows.net/"
-    authority_url = ("https://login.microsoftonline.com/" + tenant_id)
+    authority_url = f"https://login.microsoftonline.com/{tenant_id}"
     context = adal.AuthenticationContext(authority_url)
     azure_credential = context.acquire_token_with_client_certificate(
         resource,
@@ -76,21 +76,37 @@ def import_child_runbook(resource_group, automation_account, runbook_name):
     subscription_id = str(runas_connection["SubscriptionId"])
 
     # Set up URI to create a new automation job
-    uri = ("https://management.azure.com/subscriptions/" + subscription_id
-           + "/resourceGroups/" + resource_group
-           + "/providers/Microsoft.Automation/automationAccounts/" + automation_account
-           + "/runbooks/" + runbook_name + "/content?api-version=2015-10-31")
+    uri = (
+        (
+            (
+                (
+                    (
+                        (
+                            f"https://management.azure.com/subscriptions/{subscription_id}"
+                            + "/resourceGroups/"
+                        )
+                        + resource_group
+                    )
+                    + "/providers/Microsoft.Automation/automationAccounts/"
+                )
+                + automation_account
+            )
+            + "/runbooks/"
+        )
+        + runbook_name
+    ) + "/content?api-version=2015-10-31"
+
 
 
     # Make request to get runbook content
-    headers = {"Authorization": 'Bearer ' + access_token}
+    headers = {"Authorization": f'Bearer {access_token}'}
     result = requests.get(uri, headers=headers)
 
-    runbookfile = os.path.join(sys.path[0], runbook_name) + ".py"
+    runbookfile = f"{os.path.join(sys.path[0], runbook_name)}.py"
 
     with open(runbookfile, "w") as text_file:
         text_file.write(result.text)
-    
+
     # Import downloaded python module and return to caller
     import importlib
     return importlib.import_module(runbook_name)
@@ -101,9 +117,9 @@ def load_webhook_body():
     import json
 
     # Read all the arguments sent in by the webhook
-    payload = ""
-    for index in range(len(sys.argv)):
-        payload += str(sys.argv[index]).strip()
+    payload = "".join(
+        str(sys.argv[index]).strip() for index in range(len(sys.argv))
+    )
 
     # Get the RequestBody so we can process it
     start = payload.find("RequestBody:")
